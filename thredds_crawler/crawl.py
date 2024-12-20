@@ -39,7 +39,7 @@ def request_xml(url, auth=None):
     '''
     try:
         r = requests.get(url, auth=auth, verify=False)
-        return r.text.encode('utf-8')
+        return r.url, r.text.encode('utf-8')
     except BaseException:
         logger.error("Skipping %s (error parsing the XML)" % url)
     return
@@ -216,8 +216,8 @@ class Crawl(object):
         url = self._get_catalog_url(url)
 
         # Get an etree object
-        xml_content = request_xml(url, auth)
-        for ds in self._build_catalog(url, xml_content):
+        redirected_url, xml_content = request_xml(url, auth)
+        for ds in self._build_catalog(redirected_url, xml_content):
             yield ds
 
     def _build_catalog(self, url, xml_content):
@@ -239,7 +239,9 @@ class Crawl(object):
 
         # This is essentially the graph traversal step
         for i, response in enumerate(responses):
-            for ds in self._build_catalog(references[i], response):
+            redirected_url = response[0]
+            xml_content = response[1]
+            for ds in self._build_catalog(redirected_url, xml_content):
                 yield ds
 
         # Yield the leaves
